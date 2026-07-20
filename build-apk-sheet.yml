@@ -1,0 +1,80 @@
+name: Build Android APK (Google Sheet wrapper)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request APK from PWABuilder Cloud service
+        run: |
+          cat > apk_request.json << 'EOF'
+          {
+            "appVersion": "1.0.0",
+            "appVersionCode": 1,
+            "backgroundColor": "#faf7f2",
+            "themeColor": "#1c2b3a",
+            "navigationColor": "#1c2b3a",
+            "navigationColorDark": "#1c2b3a",
+            "navigationDividerColor": "#1c2b3a",
+            "navigationDividerColorDark": "#1c2b3a",
+            "display": "standalone",
+            "orientation": "default",
+            "fallbackType": "customtabs",
+            "host": "https://hazim-alt.github.io/Khatam-Fabric-App",
+            "fullScopeUrl": "https://docs.google.com/",
+            "iconUrl": "https://hazim-alt.github.io/Khatam-Fabric-App/icon-512.png",
+            "maskableIconUrl": "https://hazim-alt.github.io/Khatam-Fabric-App/icon-512.png",
+            "launcherName": "KHATAM Roll",
+            "name": "KHATAM Fabric Roll Record",
+            "shortName": "KHATAM Roll",
+            "packageId": "com.khatam.sheetapp",
+            "startUrl": "https://docs.google.com/spreadsheets/d/1Az8cX43hdxvHV-BNo0eNvr-4OhAkkKggStRV9U5N6PY/edit?usp=sharing",
+            "webManifestUrl": "https://hazim-alt.github.io/Khatam-Fabric-App/manifest.json",
+            "shortcuts": [],
+            "additionalTrustedOrigins": [
+              { "namespace": "web", "site": "https://docs.google.com" }
+            ],
+            "shareTarget": null,
+            "features": {
+              "locationDelegation": { "enabled": false },
+              "playBilling": { "enabled": false }
+            },
+            "signingMode": "new",
+            "signing": {
+              "alias": "khatam",
+              "fullName": "KHATAM Festive Apparel Sdn Bhd",
+              "organization": "KHATAM",
+              "organizationalUnit": "IT",
+              "countryCode": "MY"
+            },
+            "splashScreenFadeOutDuration": 300,
+            "enableNotifications": false,
+            "enableSiteSettingsShortcut": true,
+            "isChromeOSOnly": false,
+            "isMetaQuest": false,
+            "includeSourceCode": false,
+            "isGooglePlayApk": false
+          }
+          EOF
+          HTTP_STATUS=$(curl -sS -X POST https://pwabuilder-cloudapk.azurewebsites.net/generateAppPackage \
+            -H "Content-Type: application/json" \
+            -o package.zip \
+            -w "%{http_code}" \
+            -d @apk_request.json)
+          echo "HTTP Status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "=== SERVER ERROR ==="
+            cat package.zip
+            exit 1
+          fi
+
+      - name: Unzip package
+        run: unzip -o package.zip -d apk-output
+
+      - name: Upload APK as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: khatam-sheet-apk
+          path: apk-output/
